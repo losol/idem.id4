@@ -1,13 +1,10 @@
-using System.Linq;
-using System.Reflection;
-using IdentityServer4.EntityFramework.DbContexts;
-using IdentityServer4.EntityFramework.Mappers;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Reflection;
 
 namespace Losol.Identity
 {
@@ -67,7 +64,8 @@ namespace Losol.Identity
             }
             else
             {
-                // TODO: create production certificate ike described here https://stackoverflow.com/questions/48804305/how-we-can-replace-adddevelopersigningcredential-on-aws-serverless-lambda-enviro/48809214#48809214
+                var commonName = Configuration["KeyStore:LocalMachine:CommonName"];
+                builder.AddSigningCredentialFromLocalMachineStorage(commonName);
             }
         }
 
@@ -88,44 +86,7 @@ namespace Losol.Identity
                 endpoints.MapDefaultControllerRoute();
             });
 
-            InitializeDatabase(app);
-        }
-
-        private void InitializeDatabase(IApplicationBuilder app)
-        {
-            using var serviceScope = app.ApplicationServices.GetService<IServiceScopeFactory>().CreateScope();
-            serviceScope.ServiceProvider.GetRequiredService<PersistedGrantDbContext>().Database.Migrate();
-
-            var context = serviceScope.ServiceProvider.GetRequiredService<ConfigurationDbContext>();
-            context.Database.Migrate();
-
-            var config = Configuration.GetSection("InitialSeedData");
-            if (!context.Clients.Any())
-            {
-                foreach (var client in Config.GetClients(config.GetSection("Clients")))
-                {
-                    context.Clients.Add(client.ToEntity());
-                }
-                context.SaveChanges();
-            }
-
-            if (!context.IdentityResources.Any())
-            {
-                foreach (var resource in Config.GetIds(config.GetSection("Ids")))
-                {
-                    context.IdentityResources.Add(resource.ToEntity());
-                }
-                context.SaveChanges();
-            }
-
-            if (!context.ApiResources.Any())
-            {
-                foreach (var resource in Config.GetApis(config.GetSection("Apis")))
-                {
-                    context.ApiResources.Add(resource.ToEntity());
-                }
-                context.SaveChanges();
-            }
+            app.InitializeDatabase(Configuration.GetSection("InitialSeedData"));
         }
     }
 }
