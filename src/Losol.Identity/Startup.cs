@@ -1,10 +1,9 @@
+using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System.Reflection;
 
 namespace Losol.Identity
 {
@@ -13,6 +12,8 @@ namespace Losol.Identity
         public IWebHostEnvironment Environment { get; }
 
         public IConfiguration Configuration { get; }
+
+        public IdentityServerConfig IdentityServerConfig { get; set; }
 
         public Startup(
             IWebHostEnvironment environment,
@@ -26,33 +27,27 @@ namespace Losol.Identity
         {
             services.AddControllersWithViews();
 
-            var connectionString = this.Configuration.GetConnectionString("DefaultConnection");
-            var migrationsAssembly = typeof(Startup).GetTypeInfo().Assembly.GetName().Name;
-
             var builder = services.AddIdentityServer(options =>
                 {
                     options.Events.RaiseErrorEvents = true;
                     options.Events.RaiseInformationEvents = true;
                     options.Events.RaiseFailureEvents = true;
                     options.Events.RaiseSuccessEvents = true;
-                })
-                .AddConfigurationStore(options =>
-                {
-                    options.ConfigureDbContext = b =>
-                        b.UseSqlServer(connectionString,
-                            sql => sql.MigrationsAssembly(migrationsAssembly));
-                })
-                // this adds the operational data from DB (codes, tokens, consents)
-                .AddOperationalStore(options =>
-                {
-                    options.ConfigureDbContext = b =>
-                        b.UseSqlServer(connectionString,
-                            sql => sql.MigrationsAssembly(migrationsAssembly));
-
-                    var config = Configuration.GetSection("OperationalStore").Get<OperationalStoreConfig>();
-                    options.EnableTokenCleanup = config.EnableTokenCleanup;
-                    options.TokenCleanupInterval = config.TokenCleanupInterval;
                 });
+
+            IdentityServerConfig = Configuration.GetSection("IdentityServer").Get<IdentityServerConfig>();
+            switch (IdentityServerConfig.ConfigurationType)
+            {
+                case ConfigurationType.InMemory:
+                    builder.AddInMemoryConfiguration(Configuration.GetSection("InMemoryConfiguration"));
+                    break;
+
+                case ConfigurationType.Database:
+                    builder.AddDatabaseConfiguration(
+                        Configuration.GetSection("DatabaseConfiguration"),
+                        Configuration.GetConnectionString("DefaultConnection"));
+                    break;
+            }
 
             services.AddAuthentication();
             services.AddAuthorization();
@@ -64,8 +59,12 @@ namespace Losol.Identity
             }
             else
             {
-                var commonName = Configuration["KeyStore:LocalMachine:CommonName"];
-                builder.AddSigningCredentialFromLocalMachineStorage(commonName);
+                var certCommonName = IdentityServerConfig.KeyStore.LocalMachine?.CommonName;
+                if (string.IsNullOrEmpty(certCommonName))
+                {
+                    throw new InvalidOperationException("Certificate CommonName must be specified for use in production");
+                }
+                builder.AddSigningCredentialFromLocalMachineStorage(certCommonName);
             }
         }
 
@@ -86,7 +85,10 @@ namespace Losol.Identity
                 endpoints.MapDefaultControllerRoute();
             });
 
-            app.InitializeDatabase(Configuration.GetSection("InitialSeedData"));
+            if (IdentityServerConfig.ConfigurationType == ConfigurationType.Database)
+            {
+                app.InitializeDatabase(Configuration.GetSection("InitialSeedData"));
+            }
         }
     }
 }
