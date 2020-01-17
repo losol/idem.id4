@@ -3,12 +3,50 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Linq;
+using System.Reflection;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace Losol.Identity
 {
     public static class IdentityServerBuilderExtensions
     {
-        public static void AddSigningCredentialFromLocalMachineStorage(this IIdentityServerBuilder builder, string commonName)
+        public static IIdentityServerBuilder AddInMemoryConfiguration(this IIdentityServerBuilder builder, IConfigurationSection config)
+        {
+            return builder
+                .AddInMemoryIdentityResources(Config.GetIds(config.GetSection("Ids")))
+                .AddInMemoryApiResources(Config.GetApis(config.GetSection("Apis")))
+                .AddInMemoryClients(Config.GetClients(config.GetSection("Clients")));
+        }
+
+        public static IIdentityServerBuilder AddDatabaseConfiguration(this IIdentityServerBuilder builder,
+            IConfigurationSection config,
+            string connectionString)
+        {
+            var migrationsAssembly = typeof(Startup).GetTypeInfo().Assembly.GetName().Name;
+            return builder.AddConfigurationStore(options =>
+                {
+                    options.ConfigureDbContext = b =>
+                        b.UseNpgsql(connectionString,
+                            sql => sql.MigrationsAssembly(migrationsAssembly));
+                })
+                // this adds the operational data from DB (codes, tokens, consents)
+                .AddOperationalStore(options =>
+                {
+                    options.ConfigureDbContext = b =>
+                        b.UseNpgsql(connectionString,
+                            sql => sql.MigrationsAssembly(migrationsAssembly));
+
+                    var c = config.GetSection("OperationalStore").Get<OperationalStoreConfig>();
+                    if (c != null)
+                    {
+                        options.EnableTokenCleanup = c.EnableTokenCleanup;
+                        options.TokenCleanupInterval = c.TokenCleanupInterval;
+                    }
+                });
+        }
+
+        public static IIdentityServerBuilder AddSigningCredentialFromLocalMachineStorage(this IIdentityServerBuilder builder, string commonName)
         {
             //The one that expires last at the top
             var certs = X509.LocalMachine.My.SubjectDistinguishedName.Find("CN=" + commonName, false)
@@ -35,6 +73,8 @@ namespace Losol.Identity
             {
                 builder.AddValidationKey(cert);
             }
+
+            return builder;
         }
     }
 }
