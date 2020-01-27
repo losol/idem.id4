@@ -1,9 +1,17 @@
-using System;
+using Losol.Communication.Sms.Twilio;
+using Losol.Identity.Config;
+using Losol.Identity.Data;
+using Losol.Identity.Extensions;
+using Losol.Identity.Model;
+using Losol.Identity.Validation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System;
 
 namespace Losol.Identity
 {
@@ -19,13 +27,20 @@ namespace Losol.Identity
             IWebHostEnvironment environment,
             IConfiguration configuration)
         {
-            this.Environment = environment;
-            this.Configuration = configuration;
+            Environment = environment;
+            Configuration = configuration;
         }
 
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllersWithViews();
+
+            var connectionString = Configuration.GetConnectionString("DefaultConnection");
+            services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(connectionString));
+
+            services.AddIdentity<ApplicationUser, IdentityRole>()
+                .AddEntityFrameworkStores<ApplicationDbContext>()
+                .AddDefaultTokenProviders();
 
             var builder = services.AddIdentityServer(options =>
                 {
@@ -33,7 +48,9 @@ namespace Losol.Identity
                     options.Events.RaiseInformationEvents = true;
                     options.Events.RaiseFailureEvents = true;
                     options.Events.RaiseSuccessEvents = true;
-                });
+                })
+                .AddExtensionGrantValidator<PhoneNumberTokenGrantValidator>()
+                .AddAspNetIdentity<ApplicationUser>();
 
             IdentityServerConfig = Configuration.GetSection("IdentityServer").Get<IdentityServerConfig>();
             switch (IdentityServerConfig.ConfigurationType)
@@ -45,14 +62,15 @@ namespace Losol.Identity
                 case ConfigurationType.Database:
                     builder.AddDatabaseConfiguration(
                         Configuration.GetSection("DatabaseConfiguration"),
-                        Configuration.GetConnectionString("DefaultConnection"));
+                        connectionString);
                     break;
             }
 
             services.AddAuthentication();
             services.AddAuthorization();
+            services.AddTwilioSmsServices(Configuration.GetSection("Twilio"));
 
-            if (this.Environment.IsDevelopment())
+            if (Environment.IsDevelopment())
             {
                 // not recommended for production - you need to store your key material somewhere secure
                 builder.AddDeveloperSigningCredential();
@@ -70,7 +88,7 @@ namespace Losol.Identity
 
         public void Configure(IApplicationBuilder app)
         {
-            if (this.Environment.IsDevelopment())
+            if (Environment.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
             }
@@ -85,9 +103,11 @@ namespace Losol.Identity
                 endpoints.MapDefaultControllerRoute();
             });
 
-            if (IdentityServerConfig.ConfigurationType == ConfigurationType.Database)
+            if (!bool.TrueString.Equals(Configuration["SkipDbInitialization"]))
             {
-                app.InitializeDatabase(Configuration.GetSection("InitialSeedData"));
+                app.InitializeDatabase(
+                    IdentityServerConfig.ConfigurationType,
+                    Configuration.GetSection("InitialSeedData"));
             }
         }
     }
