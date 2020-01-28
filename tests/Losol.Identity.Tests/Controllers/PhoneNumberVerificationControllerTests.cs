@@ -1,5 +1,4 @@
-﻿using IdentityModel.Client;
-using Losol.Identity.Tests.Extensions;
+﻿using Losol.Identity.Tests.Extensions;
 using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;

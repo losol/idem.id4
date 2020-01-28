@@ -46,6 +46,8 @@ namespace Losol.Identity.Controllers
                 return BadRequest(ModelState);
             }
 
+            // TODO: check Captcha
+
             try
             {
                 var user = await GetUserByPhoneAsync(model.PhoneNumber);
@@ -78,6 +80,8 @@ namespace Losol.Identity.Controllers
             {
                 return BadRequest("resend_token is required");
             }
+
+            // TODO: check Captcha
 
             var user = await GetUserByPhoneAsync(model.PhoneNumber);
             if (!await _dataProtectorTokenProvider.ValidateAsync(AuthConstants.TokenPurpose.ResendTokenPurpose,
