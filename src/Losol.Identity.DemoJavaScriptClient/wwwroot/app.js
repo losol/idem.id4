@@ -20,67 +20,52 @@ var mgr = new Oidc.UserManager({
     authority: "http://localhost:5000",
     client_id: "demo-js-client",
     redirect_uri: "http://localhost:5003/callback.html",
-    //response_type: "id_token token",
-    scope: "openid profile test.api",
-    post_logout_redirect_uri: "http://localhost:5003/index.html",
+    response_type: "code",
+    scope: "openid profile demo.api",
+    post_logout_redirect_uri: "http://localhost:5003/index.html"
 });
 
-mgr.getUser().then(function (user) {
-    if (user) {
-        log("User logged in", user.profile);
-    }
-    else {
-        log("User not logged in");
-    }
-});
-
-function sendSmsCode(phoneNumber) {
-    // TODO: add captcha
-    var url = "http://localhost:5000/api/phone/verification";
-    var xhr = new XMLHttpRequest();
-    xhr.open("POST", url, true);
-    xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-    xhr.onload = function () {
-        log(xhr.status, JSON.parse(xhr.responseText));
-    };
-    xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4 && xhr.status === 200) {
-            log("Verification code sent to " + phoneNumber);
-            var response = JSON.parse(xhr.responseText);
-            alert(xhr.responseText);
+function updateUIComponents() {
+    mgr.getUser().then(function (user) {
+        if (user) {
+            log("User logged in", user.profile);
         }
-    };
-    xhr.send("phone=" + encodeURIComponent(phoneNumber));
-}
-
-function reSendSmsCode(phoneNumber) {
-    // TODO: add captcha
-    // TODO: check delay
-    var url = "http://localhost:5000/api/phone/verification";
-    var xhr = new XMLHttpRequest();
-    xhr.open("POST", url, true);
-    xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-    xhr.onload = function () {
-        log(xhr.status, JSON.parse(xhr.responseText));
-    };
-    xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4 && xhr.status === 200) {
-            alert(xhr.responseText);
+        else {
+            log("User not logged in");
         }
-    };
-    xhr.send("phone=" + encodeURIComponent(phoneNumber));
+        var loggedIn = !!user;
+        document.getElementById("phone").disabled = loggedIn;
+        document.getElementById("login").disabled = loggedIn;
+        document.getElementById("logout").disabled = !loggedIn;
+        document.getElementById("api").disabled = !loggedIn;
+    });
 }
 
 function login() {
-    mgr.signinRedirect();
+    mgr.signinRedirect({
+        login_hint: document.getElementById("phone").value
+    }).then(function () {
+        updateUIComponents();
+    });
 }
 
 function api() {
     mgr.getUser().then(function (user) {
-        log("Demo API call goes here. Auth token: " + user.access_token);
+        var url = "http://localhost:5001/identity";
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", url);
+        xhr.onload = function () {
+            log(xhr.status, JSON.parse(xhr.responseText));
+        };
+        xhr.setRequestHeader("Authorization", "Bearer " + user.access_token);
+        xhr.send();
     });
 }
 
 function logout() {
-    mgr.signoutRedirect();
+    mgr.signoutRedirect().then(function () {
+        updateUIComponents();
+    });
 }
+
+updateUIComponents();

@@ -64,6 +64,10 @@ namespace Losol.Identity.Config
                             .GetChildren()
                             .Select(s => s.Value)
                             .ToArray(),
+                        AllowedCorsOrigins = c.GetSection("AllowedCorsOrigins")
+                            .GetChildren()
+                            .Select(s => s.Value)
+                            .ToArray(),
                         RedirectUris = c.GetSection("RedirectPaths")
                             .GetChildren()
                             .Select(s => UriUtil.BuildUri(s.Value, baseUrl))
@@ -72,6 +76,14 @@ namespace Losol.Identity.Config
                             .GetChildren()
                             .Select(s => UriUtil.BuildUri(s.Value, baseUrl))
                             .ToArray(),
+                        RequirePkce = bool.TrueString.Equals(c["RequirePkce"]),
+                        RequireConsent = string.IsNullOrEmpty(c["RequireConsent"]) ||
+                                         bool.TrueString.Equals(c["RequireConsent"]),
+                        RequireClientSecret = bool.TrueString.Equals(c["RequireClientSecret"]),
+                        AllowAccessTokensViaBrowser = bool.TrueString.Equals(c["AllowAccessTokensViaBrowser"]),
+                        Properties = c.GetSection("Properties")
+                            .GetChildren()
+                            .ToDictionary(s => s.Key, s => s.Value)
                     };
 
                     var clientSecret = c["Secret"];
@@ -88,13 +100,7 @@ namespace Losol.Identity.Config
 
                     if (client.AllowedGrantTypes.Contains(GrantType.AuthorizationCode))
                     {
-                        client.RequirePkce = true;
-                        client.RequireClientSecret = false;
-                        client.AllowAccessTokensViaBrowser = true;
-                        client.AllowedCorsOrigins = c.GetSection("CorsOrigins")?
-                                                        .GetChildren()
-                                                        .Select(s => UriUtil.BuildUri(s.Value, baseUrl))
-                                                        .ToArray() ?? new[] { baseUrl };
+                        
                     }
 
                     return client;

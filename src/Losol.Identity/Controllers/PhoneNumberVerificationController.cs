@@ -1,12 +1,9 @@
-﻿using IdentityServer4.Models;
-using Losol.Communication.Sms;
-using Losol.Identity.Constants;
+﻿using Losol.Communication.Sms;
 using Losol.Identity.Model;
-using Losol.Identity.Util;
+using Losol.Identity.Services.Auth;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
 using System.ComponentModel.DataAnnotations;
@@ -15,12 +12,15 @@ using System.Threading.Tasks;
 
 namespace Losol.Identity.Controllers
 {
-    [Route("api/phone/verification")]
+    [Route(Path)]
     public class PhoneNumberVerificationController : ControllerBase
     {
+        public const string Path = "/api/phone/verification";
+
         private readonly ISmsSender _smsService;
         private readonly DataProtectorTokenProvider<ApplicationUser> _dataProtectorTokenProvider;
         private readonly PhoneNumberTokenProvider<ApplicationUser> _phoneNumberTokenProvider;
+        private readonly IPhoneAuthenticationService _phoneAuthenticationService;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<PhoneNumberVerificationController> _logger;
 
@@ -29,13 +29,15 @@ namespace Losol.Identity.Controllers
             DataProtectorTokenProvider<ApplicationUser> dataProtectorTokenProvider,
             PhoneNumberTokenProvider<ApplicationUser> phoneNumberTokenProvider,
             UserManager<ApplicationUser> userManager,
-            ILogger<PhoneNumberVerificationController> logger)
+            ILogger<PhoneNumberVerificationController> logger,
+            IPhoneAuthenticationService phoneAuthenticationService)
         {
             _smsService = smsService ?? throw new ArgumentNullException(nameof(smsService));
             _dataProtectorTokenProvider = dataProtectorTokenProvider ?? throw new ArgumentNullException(nameof(dataProtectorTokenProvider));
             _phoneNumberTokenProvider = phoneNumberTokenProvider ?? throw new ArgumentNullException(nameof(phoneNumberTokenProvider));
             _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _phoneAuthenticationService = phoneAuthenticationService;
         }
 
         [HttpPost]
@@ -50,14 +52,10 @@ namespace Losol.Identity.Controllers
 
             try
             {
-                var user = await GetUserByPhoneAsync(model.PhoneNumber);
-                var verifyToken = await _phoneNumberTokenProvider
-                    .GenerateAsync(AuthConstants.TokenPurpose.PhoneNumberVerificationPurpose, _userManager, user);
-
-                await SendVerificationCodeAsync(model.PhoneNumber, verifyToken);
+                var user = await _phoneAuthenticationService.SendVerificationCodeAsync(model.PhoneNumber);
 
                 var resendToken = await _dataProtectorTokenProvider
-                    .GenerateAsync(AuthConstants.TokenPurpose.ResendTokenPurpose, _userManager, user);
+                    .GenerateAsync(ResendTokenPurpose, _userManager, user);
 
                 return Ok(new PhoneVerificationResponseModel(resendToken));
             }
@@ -83,8 +81,8 @@ namespace Losol.Identity.Controllers
 
             // TODO: check Captcha
 
-            var user = await GetUserByPhoneAsync(model.PhoneNumber);
-            if (!await _dataProtectorTokenProvider.ValidateAsync(AuthConstants.TokenPurpose.ResendTokenPurpose,
+            var user = await _phoneAuthenticationService.GetUserByPhoneAsync(model.PhoneNumber);
+            if (!await _dataProtectorTokenProvider.ValidateAsync(ResendTokenPurpose,
                 model.ResendToken, _userManager, user))
             {
                 return BadRequest("Invalid resend token");
@@ -92,13 +90,10 @@ namespace Losol.Identity.Controllers
 
             try
             {
-                var verifyToken = await _phoneNumberTokenProvider
-                    .GenerateAsync(AuthConstants.TokenPurpose.PhoneNumberVerificationPurpose, _userManager, user);
-
-                await SendVerificationCodeAsync(model.PhoneNumber, verifyToken);
+                user = await _phoneAuthenticationService.SendVerificationCodeAsync(model.PhoneNumber);
 
                 var newResendToken = await _dataProtectorTokenProvider
-                    .GenerateAsync(AuthConstants.TokenPurpose.ResendTokenPurpose, _userManager, user);
+                    .GenerateAsync(ResendTokenPurpose, _userManager, user);
 
                 return Ok(new PhoneVerificationResponseModel(newResendToken));
             }
@@ -109,24 +104,7 @@ namespace Losol.Identity.Controllers
             }
         }
 
-        private async Task<ApplicationUser> GetUserByPhoneAsync(string phoneNumber)
-        {
-            phoneNumber = PhoneNumberUtil.NormalizePhoneNumber(phoneNumber);
-            return await _userManager.Users.SingleOrDefaultAsync(x => x.PhoneNumber == phoneNumber)
-                   ?? new ApplicationUser
-                   {
-                       Id = "dummy-user-id",
-                       PhoneNumber = phoneNumber,
-                       SecurityStamp = phoneNumber.Sha256()
-                   };
-        }
-
-        private async Task SendVerificationCodeAsync(string phoneNumber, string verificationCode)
-        {
-            // TODO: use message queue for this
-            // TODO: localize
-            await _smsService.SendSmsAsync(phoneNumber, $"Your login verification code is: {verificationCode}");
-        }
+        public const string ResendTokenPurpose = "resend_token";
     }
 
     public class PhoneVerificationRequestModel

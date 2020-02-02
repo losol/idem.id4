@@ -1,7 +1,7 @@
-﻿using Losol.Identity.Util;
+﻿using Losol.Identity.Services.Util;
 using Xunit;
 
-namespace Losol.Identity.Tests.Util
+namespace Losol.Identity.Services.Tests.Util
 {
     public class PhoneNumberUtilTests
     {

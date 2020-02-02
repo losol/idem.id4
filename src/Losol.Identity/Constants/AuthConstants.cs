@@ -12,11 +12,5 @@
         {
             public const string PhoneNumberToken = "phone_number_token";
         }
-
-        public struct TokenPurpose
-        {
-            public const string PhoneNumberVerificationPurpose = "verify_number";
-            public const string ResendTokenPurpose = "resend_token";
-        }
     }
 }

@@ -23,4 +23,8 @@
     <ProjectReference Include="..\..\src\Losol.Identity\Losol.Identity.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Util\" />
+  </ItemGroup>
+
 </Project>
