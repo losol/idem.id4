@@ -98,11 +98,6 @@ namespace Losol.Identity.Config
                         client.FrontChannelLogoutUri = UriUtil.BuildUri(frontChannelLogoutPath, baseUrl);
                     }
 
-                    if (client.AllowedGrantTypes.Contains(GrantType.AuthorizationCode))
-                    {
-                        
-                    }
-
                     return client;
                 })
                 .ToArray();
