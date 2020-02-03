@@ -150,7 +150,7 @@ namespace Losol.Identity.Controllers.Account
 
             if (user == null)
             {
-                // TODO: verification failed message
+                ModelState.AddModelError(nameof(SmsCodeVerificationModel.SmsCode), "Wrong SMS code.");
                 return View(model);
             }
 
