@@ -1,9 +1,10 @@
+using Losol.Communication.Sms.Mock;
 using Losol.Communication.Sms.Twilio;
 using Losol.Identity.Config;
 using Losol.Identity.Data;
 using Losol.Identity.Extensions;
 using Losol.Identity.Model;
-using Losol.Identity.Validation;
+using Losol.Identity.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
@@ -12,9 +13,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
-using Losol.Communication.Sms.Mock;
-using Losol.Identity.Controllers;
-using Losol.Identity.Services;
 
 namespace Losol.Identity
 {
@@ -51,9 +49,7 @@ namespace Losol.Identity
                     options.Events.RaiseInformationEvents = true;
                     options.Events.RaiseFailureEvents = true;
                     options.Events.RaiseSuccessEvents = true;
-                    options.Cors.CorsPaths.Add(PhoneNumberVerificationController.Path);
                 })
-                .AddExtensionGrantValidator<PhoneNumberTokenGrantValidator>()
                 .AddAspNetIdentity<ApplicationUser>();
 
             IdentityServerConfig = Configuration.GetSection("IdentityServer").Get<IdentityServerConfig>();
