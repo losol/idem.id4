@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace Losol.Identity.DemoJavaScriptClient
+namespace Losol.Identity.DemoAdminJSClient
 {
     public class Startup
     {

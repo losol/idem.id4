@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 
-namespace Losol.Identity.DemoJavaScriptClient
+namespace Losol.Identity.DemoAdminJSClient
 {
     public class Program
     {
