@@ -8,6 +8,9 @@ namespace Losol.Identity.Controllers.Account
         public string PhoneNumber { get; set; }
 
         [Required]
+        public string TokenKey { get; set; }
+
+        [Required]
         public string SmsCode { get; set; }
 
         [Required]

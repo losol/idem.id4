@@ -18,6 +18,7 @@
                     <form asp-action="Code">
                         <input type="hidden" asp-for="ReturnUrl" />
                         <input type="hidden" asp-for="PhoneNumber" />
+                        <input type="hidden" asp-for="TokenKey" />
 
                         <fieldset>
 
@@ -28,6 +29,7 @@
 
                             <div class="form-group">
                                 <button class="btn btn-primary" name="button" value="verify">Verify</button>
+                                <button class="btn btn-default" name="button" value="resend">Resend Code</button>
                                 <button class="btn btn-default" name="button" value="cancel">Cancel</button>
                             </div>
 

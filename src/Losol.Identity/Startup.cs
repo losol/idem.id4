@@ -36,6 +36,12 @@ namespace Losol.Identity
         {
             services.AddControllersWithViews();
 
+            if (Environment.IsDevelopment())
+            {
+                services.AddRazorPages()
+                    .AddRazorRuntimeCompilation();
+            }
+
             var connectionString = Configuration.GetConnectionString("DefaultConnection");
             services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(connectionString));
 

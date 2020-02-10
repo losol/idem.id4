@@ -106,13 +106,13 @@ namespace Losol.Identity.Controllers.Account
                     if (!string.IsNullOrEmpty(model.PhoneNumber))
                     {
                         // TODO: check Captcha
-
-                        await _phoneAuthenticationService.SendVerificationCodeAsync(model.PhoneNumber);
-
+                        var key = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+                        await _phoneAuthenticationService.SendVerificationCodeAsync(key, model.PhoneNumber);
                         return View("Code", new SmsCodeVerificationModel
                         {
                             PhoneNumber = model.PhoneNumber,
-                            ReturnUrl = returnUrl
+                            ReturnUrl = returnUrl,
+                            TokenKey = key
                         });
                     }
                     break;
@@ -133,28 +133,38 @@ namespace Losol.Identity.Controllers.Account
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Code(SmsCodeVerificationModel model, string button)
         {
-            if (button != "verify")
+            switch (button)
             {
-                return await CancelledAsync(model.ReturnUrl);
+                case "verify":
+                    if (!ModelState.IsValid)
+                    {
+                        return View(model);
+                    }
+
+                    var user = await _phoneAuthenticationService.AuthenticateAsync(
+                        model.TokenKey,
+                        model.PhoneNumber,
+                        model.SmsCode,
+                        true);
+
+                    if (user == null)
+                    {
+                        ModelState.AddModelError(nameof(SmsCodeVerificationModel.SmsCode), "Wrong SMS code.");
+                        return View(model);
+                    }
+
+                    return await RedirectAsync(model.ReturnUrl);
+
+                case "resend":
+                    // TODO: check Captcha
+                    ModelState.Clear();
+                    model.TokenKey = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+                    await _phoneAuthenticationService.SendVerificationCodeAsync(model.TokenKey, model.PhoneNumber);
+                    return View(model);
+
+                default:
+                    return await CancelledAsync(model.ReturnUrl);
             }
-
-            if (!ModelState.IsValid)
-            {
-                return View(model);
-            }
-
-            var user = await _phoneAuthenticationService.AuthenticateAsync(
-                model.PhoneNumber,
-                model.SmsCode,
-                true);
-
-            if (user == null)
-            {
-                ModelState.AddModelError(nameof(SmsCodeVerificationModel.SmsCode), "Wrong SMS code.");
-                return View(model);
-            }
-
-            return await RedirectAsync(model.ReturnUrl);
         }
 
         /// <summary>

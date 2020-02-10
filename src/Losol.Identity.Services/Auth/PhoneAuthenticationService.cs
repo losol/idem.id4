@@ -38,8 +38,13 @@ namespace Losol.Identity.Services.Auth
             _signInManager = signInManager;
         }
 
-        public async Task<ApplicationUser> SendVerificationCodeAsync(string phoneNumber)
+        public async Task<ApplicationUser> SendVerificationCodeAsync(string key, string phoneNumber)
         {
+            if (string.IsNullOrEmpty(key))
+            {
+                throw new ArgumentException(nameof(key));
+            }
+
             if (string.IsNullOrEmpty(phoneNumber))
             {
                 throw new ArgumentException(nameof(phoneNumber));
@@ -48,17 +53,23 @@ namespace Losol.Identity.Services.Auth
             var user = await GetUserByPhoneAsync(phoneNumber);
 
             var verifyToken = await _phoneNumberTokenProvider
-                .GenerateAsync(PhoneNumberVerificationPurpose, _userManager, user);
+                .GenerateAsync($"{PhoneNumberVerificationPurpose}-{key}", _userManager, user);
 
-            await SendVerificationCodeAsync(phoneNumber, verifyToken);
+            await DoSendVerificationCodeAsync(phoneNumber, verifyToken);
             return user;
         }
 
         public async Task<ApplicationUser> AuthenticateAsync(
+            string key,
             string phoneNumber,
             string verificationToken,
             bool createUserIfNotExists = false)
         {
+            if (string.IsNullOrEmpty(key))
+            {
+                throw new ArgumentException(nameof(key));
+            }
+
             if (string.IsNullOrEmpty(phoneNumber))
             {
                 throw new ArgumentException(nameof(phoneNumber));
@@ -73,7 +84,7 @@ namespace Losol.Identity.Services.Auth
             var userExists = user.Id != DummyUserId;
 
             var valid = await _phoneNumberTokenProvider
-                .ValidateAsync(PhoneNumberVerificationPurpose, verificationToken, _userManager, user);
+                .ValidateAsync($"{PhoneNumberVerificationPurpose}-{key}", verificationToken, _userManager, user);
 
             if (!valid)
             {
@@ -138,7 +149,7 @@ namespace Losol.Identity.Services.Auth
             };
         }
 
-        private async Task SendVerificationCodeAsync(string phoneNumber, string verificationCode)
+        private async Task DoSendVerificationCodeAsync(string phoneNumber, string verificationCode)
         {
             // TODO: use message queue for this
             // TODO: localize
