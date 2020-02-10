@@ -9,6 +9,7 @@ using Losol.Identity.Model;
 using Losol.Identity.Services.Util;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace Losol.Identity.Services.Auth
@@ -21,6 +22,7 @@ namespace Losol.Identity.Services.Auth
         private readonly ILogger<PhoneAuthenticationService> _logger;
         private readonly IEventService _events;
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly IStringLocalizer<PhoneAuthenticationService> _stringLocalizer;
 
         public PhoneAuthenticationService(
             ISmsSender smsService,
@@ -28,7 +30,8 @@ namespace Losol.Identity.Services.Auth
             UserManager<ApplicationUser> userManager,
             ILogger<PhoneAuthenticationService> logger,
             IEventService events,
-            SignInManager<ApplicationUser> signInManager)
+            SignInManager<ApplicationUser> signInManager,
+            IStringLocalizer<PhoneAuthenticationService> stringLocalizer)
         {
             _smsService = smsService;
             _phoneNumberTokenProvider = phoneNumberTokenProvider;
@@ -36,6 +39,7 @@ namespace Losol.Identity.Services.Auth
             _logger = logger;
             _events = events;
             _signInManager = signInManager;
+            _stringLocalizer = stringLocalizer;
         }
 
         public async Task<ApplicationUser> SendVerificationCodeAsync(string key, string phoneNumber)
@@ -152,8 +156,7 @@ namespace Losol.Identity.Services.Auth
         private async Task DoSendVerificationCodeAsync(string phoneNumber, string verificationCode)
         {
             // TODO: use message queue for this
-            // TODO: localize
-            await _smsService.SendSmsAsync(phoneNumber, $"Your login verification code is: {verificationCode}");
+            await _smsService.SendSmsAsync(phoneNumber, _stringLocalizer["Your login verification code is: {0}", verificationCode]);
         }
 
         private const string DummyUserId = "dummy-user-id";

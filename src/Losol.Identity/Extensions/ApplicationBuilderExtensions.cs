@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
 using IdentityServer4.EntityFramework.DbContexts;
 using IdentityServer4.EntityFramework.Mappers;
 using Losol.Identity.Config;
@@ -11,7 +13,11 @@ using System.Linq;
 using System.Security.Claims;
 using IdentityModel;
 using Losol.Identity.Model;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Localization;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Hosting.Internal;
 
 namespace Losol.Identity.Extensions
 {
@@ -27,6 +33,33 @@ namespace Losol.Identity.Extensions
             {
                 InitializeConfigurationDbContext(seedDataConfig, serviceScope);
             }
+        }
+
+        public static void InitializeLocalization(
+            this IApplicationBuilder app, 
+            CultureInfo[] supportedCultures, 
+            CultureInfo defaultCulture,
+            IWebHostEnvironment environment)
+        {
+            var requestCultureProviders = new List<IRequestCultureProvider>
+            {
+                new QueryStringRequestCultureProvider(),
+                new CookieRequestCultureProvider()
+            };
+
+            // Use localization by language header only in development environment
+            if (environment.IsDevelopment())
+            {
+                requestCultureProviders.Add(new AcceptLanguageHeaderRequestCultureProvider());
+            }
+
+            app.UseRequestLocalization(new RequestLocalizationOptions
+            {
+                DefaultRequestCulture = new RequestCulture(defaultCulture),
+                SupportedCultures = supportedCultures,
+                SupportedUICultures = supportedCultures,
+                RequestCultureProviders = requestCultureProviders
+            });
         }
 
         private static void InitializeApplicationDbContext(IServiceScope serviceScope)

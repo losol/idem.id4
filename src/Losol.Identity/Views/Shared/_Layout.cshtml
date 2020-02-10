@@ -1,4 +1,8 @@
 ﻿@using IdentityServer4.Extensions
+@using Microsoft.AspNetCore.Mvc.Localization
+
+@inject IViewLocalizer Localizer
+
 @{
     string name = null;
     if (!true.Equals(ViewData["signed-out"]))
@@ -12,7 +16,7 @@
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>IdentityServer4</title>
+    <title>@Localizer["Losol Identity Management"]</title>
     <link rel="icon" type="image/x-icon" href="~/favicon.ico" />
     <link rel="shortcut icon" type="image/x-icon" href="~/favicon.ico" />
     <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.css" />
@@ -23,7 +27,7 @@
         <div class="container-fluid">
             <div class="navbar-header">
                 <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
-                    <span class="sr-only">Toggle navigation</span>
+                    <span class="sr-only">@Localizer["Toggle navigation"]</span>
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
@@ -31,7 +35,7 @@
                 <a href="~/">
                     <span class="navbar-brand">
                         <img src="~/icon.png" class="icon-banner">
-                        IdentityServer4
+                        @Localizer["Losol Identity Management"]
                     </span>
                 </a>
             </div>
@@ -42,7 +46,7 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">@name <b class="caret"></b></a>
                         <ul class="dropdown-menu">
-                            <li><a asp-action="Logout" asp-controller="Account">Logout</a></li>
+                            <li><a asp-action="Logout" asp-controller="Account">@Localizer["Logout"]</a></li>
                         </ul>
                     </li>
                 </ul>

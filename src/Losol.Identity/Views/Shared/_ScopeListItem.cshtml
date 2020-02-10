@@ -1,5 +1,9 @@
 ﻿@model Losol.Identity.Controllers.Consent.ScopeViewModel
 
+@using Microsoft.AspNetCore.Mvc.Localization
+
+@inject IViewLocalizer Localizer
+
 <li class="list-group-item">
     <label>
         <input class="consent-scopecheck"
@@ -23,7 +27,7 @@
     </label>
     @if (Model.Required)
     {
-        <span><em>(required)</em></span>
+        <span><em>(@Localizer["required"])</em></span>
     }
     @if (Model.Description != null)
     {

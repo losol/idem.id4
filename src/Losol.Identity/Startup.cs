@@ -13,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
+using Microsoft.AspNetCore.Mvc.Razor;
 
 namespace Losol.Identity
 {
@@ -34,13 +35,11 @@ namespace Losol.Identity
 
         public void ConfigureServices(IServiceCollection services)
         {
+            services.ConfigureLocalization(Configuration.GetDefaultCulture());
             services.AddControllersWithViews();
-
-            if (Environment.IsDevelopment())
-            {
-                services.AddRazorPages()
-                    .AddRazorRuntimeCompilation();
-            }
+            services.AddRazorPages()
+                .AddRazorRuntimeCompilation()
+                .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix);
 
             var connectionString = Configuration.GetConnectionString("DefaultConnection");
             services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(connectionString));
@@ -103,6 +102,11 @@ namespace Losol.Identity
 
         public void Configure(IApplicationBuilder app)
         {
+            app.InitializeLocalization(
+                Configuration.GetSupportedCultures(),
+                Configuration.GetDefaultCulture(),
+                Environment);
+
             if (Environment.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();

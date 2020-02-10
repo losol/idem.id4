@@ -1,5 +1,9 @@
 @model Losol.Identity.Controllers.Home.ErrorViewModel
 
+@using Microsoft.AspNetCore.Mvc.Localization
+
+@inject IViewLocalizer Localizer
+
 @{
     var error = Model?.Error?.Error;
     var errorDescription = Model?.Error?.ErrorDescription;
@@ -8,13 +12,13 @@
 
 <div class="error-page">
     <div class="page-header">
-        <h1>Error</h1>
+        <h1>@Localizer["Error"]</h1>
     </div>
 
     <div class="row">
         <div class="col-sm-6">
             <div class="alert alert-danger">
-                Sorry, there was an error
+                @Localizer["Sorry, there was an error"]
 
                 @if (error != null)
                 {
@@ -33,7 +37,7 @@
 
             @if (request_id != null)
             {
-                <div class="request-id">Request Id: @request_id</div>
+                <div class="request-id">@Localizer["Request Id: {0}", request_id]</div>
             }
         </div>
     </div>
