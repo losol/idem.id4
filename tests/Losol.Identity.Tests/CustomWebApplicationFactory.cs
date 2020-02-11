@@ -33,7 +33,7 @@ namespace Losol.Identity.Tests
                 .ConfigureServices(services =>
                 {
                     // Override already added email sender with the true mock
-                    services.AddSingleton(implementationInstance: SmsSenderMock.Object);
+                    services.AddSingleton(SmsSenderMock.Object);
 
                     // Remove the app's ApplicationDbContext registration.
                     var descriptor = services.SingleOrDefault(

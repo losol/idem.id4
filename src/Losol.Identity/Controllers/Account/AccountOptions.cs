@@ -21,5 +21,7 @@ namespace Losol.Identity.Controllers.Account
         public static bool IncludeWindowsGroups = false;
 
         public static string InvalidCredentialsErrorMessage = "Invalid username or password";
+        public static string InvalidPhoneNumber = "Invalid phone number";
+        public static string InvalidSmsCode = "Invalid SMS code";
     }
 }

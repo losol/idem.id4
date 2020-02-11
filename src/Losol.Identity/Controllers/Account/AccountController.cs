@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Localization;
 
 namespace Losol.Identity.Controllers.Account
 {
@@ -34,6 +35,7 @@ namespace Losol.Identity.Controllers.Account
         private readonly IAuthenticationSchemeProvider _schemeProvider;
         private readonly IEventService _events;
         private readonly IPhoneAuthenticationService _phoneAuthenticationService;
+        private readonly IStringLocalizer<AccountController> _stringLocalizer;
 
         public AccountController(
             IIdentityServerInteractionService interaction,
@@ -42,7 +44,8 @@ namespace Losol.Identity.Controllers.Account
             IEventService events,
             SignInManager<ApplicationUser> signInManager,
             UserManager<ApplicationUser> userManager,
-            IPhoneAuthenticationService phoneAuthenticationService)
+            IPhoneAuthenticationService phoneAuthenticationService,
+            IStringLocalizer<AccountController> stringLocalizer)
         {
             _interaction = interaction;
             _clientStore = clientStore;
@@ -51,6 +54,7 @@ namespace Losol.Identity.Controllers.Account
             _signInManager = signInManager;
             _userManager = userManager;
             _phoneAuthenticationService = phoneAuthenticationService;
+            _stringLocalizer = stringLocalizer;
         }
 
         /// <summary>
@@ -86,34 +90,40 @@ namespace Losol.Identity.Controllers.Account
             switch (button)
             {
                 case "login":
-                    if (!string.IsNullOrEmpty(model.Email) && !string.IsNullOrEmpty(model.Password))
+                    if (ModelState.IsValid)
                     {
-                        var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberLogin, lockoutOnFailure: true);
-                        if (result.Succeeded)
+                        if (!string.IsNullOrEmpty(model.Email) && !string.IsNullOrEmpty(model.Password))
                         {
-                            var user = await _userManager.FindByNameAsync(model.Email);
-                            await _events.RaiseAsync(new UserLoginSuccessEvent(user.UserName, user.Id, user.UserName, clientId: context?.ClientId));
-
-                            return await RedirectAsync(returnUrl);
+                            var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberLogin, lockoutOnFailure: true);
+                            if (result.Succeeded)
+                            {
+                                var user = await _userManager.FindByNameAsync(model.Email);
+                                await _events.RaiseAsync(new UserLoginSuccessEvent(user.UserName, user.Id, user.UserName, clientId: context?.ClientId));
+                                return await RedirectAsync(returnUrl);
+                            }
                         }
-
                         await _events.RaiseAsync(new UserLoginFailureEvent(model.Email, "invalid credentials", clientId: context?.ClientId));
-                        ModelState.AddModelError(string.Empty, AccountOptions.InvalidCredentialsErrorMessage);
+                        ModelState.AddModelError(string.Empty, _stringLocalizer[AccountOptions.InvalidCredentialsErrorMessage]);
                     }
                     break;
 
                 case "sendSMS":
-                    if (!string.IsNullOrEmpty(model.PhoneNumber))
+                    if (ModelState.IsValid)
                     {
-                        // TODO: check Captcha
-                        var key = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
-                        await _phoneAuthenticationService.SendVerificationCodeAsync(key, model.PhoneNumber);
-                        return View("Code", new SmsCodeVerificationModel
+                        if (!string.IsNullOrEmpty(model.PhoneNumber))
                         {
-                            PhoneNumber = model.PhoneNumber,
-                            ReturnUrl = returnUrl,
-                            TokenKey = key
-                        });
+                            // TODO: check Captcha
+                            var key = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+                            await _phoneAuthenticationService.SendVerificationCodeAsync(key, model.PhoneNumber);
+                            return View("Code", new SmsCodeVerificationModel
+                            {
+                                PhoneNumber = model.PhoneNumber,
+                                ReturnUrl = returnUrl,
+                                TokenKey = key
+                            });
+                        }
+                        await _events.RaiseAsync(new UserLoginFailureEvent(model.Email, "invalid phone number", clientId: context?.ClientId));
+                        ModelState.AddModelError(string.Empty, _stringLocalizer[AccountOptions.InvalidPhoneNumber]);
                     }
                     break;
 
@@ -136,6 +146,12 @@ namespace Losol.Identity.Controllers.Account
             switch (button)
             {
                 case "verify":
+
+                    if (string.IsNullOrEmpty(model.SmsCode))
+                    {
+                        ModelState.AddModelError(string.Empty, _stringLocalizer[AccountOptions.InvalidSmsCode]);
+                    }
+
                     if (!ModelState.IsValid)
                     {
                         return View(model);
@@ -156,6 +172,12 @@ namespace Losol.Identity.Controllers.Account
                     return await RedirectAsync(model.ReturnUrl);
 
                 case "resend":
+
+                    if (!ModelState.IsValid)
+                    {
+                        return View(model);
+                    }
+
                     // TODO: check Captcha
                     ModelState.Clear();
                     model.TokenKey = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
