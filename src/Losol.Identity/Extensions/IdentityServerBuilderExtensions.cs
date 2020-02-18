@@ -1,22 +1,23 @@
-﻿using IdentityModel;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.IdentityModel.Tokens;
-using System;
+﻿using System;
 using System.Linq;
 using System.Reflection;
+using IdentityModel;
+using Losol.Identity.Config;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
 
-namespace Losol.Identity
+namespace Losol.Identity.Extensions
 {
     public static class IdentityServerBuilderExtensions
     {
         public static IIdentityServerBuilder AddInMemoryConfiguration(this IIdentityServerBuilder builder, IConfigurationSection config)
         {
             return builder
-                .AddInMemoryIdentityResources(Config.GetIds(config.GetSection("Ids")))
-                .AddInMemoryApiResources(Config.GetApis(config.GetSection("Apis")))
-                .AddInMemoryClients(Config.GetClients(config.GetSection("Clients")));
+                .AddInMemoryIdentityResources(InMemoryConfig.GetIds(config.GetSection("Ids")))
+                .AddInMemoryApiResources(InMemoryConfig.GetApis(config.GetSection("Apis")))
+                .AddInMemoryClients(InMemoryConfig.GetClients(config.GetSection("Clients")));
         }
 
         public static IIdentityServerBuilder AddDatabaseConfiguration(this IIdentityServerBuilder builder,
