@@ -1,4 +1,4 @@
-﻿namespace Losol.Identity
+﻿namespace Losol.Identity.Config
 {
     public class OperationalStoreConfig
     {
