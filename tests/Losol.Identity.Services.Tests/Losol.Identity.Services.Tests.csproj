@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Losol.Identity.Services\Losol.Identity.Services.csproj" />
+    <ProjectReference Include="..\..\src\Losol.Identity.Services\Losol.Identity.Services.csproj" />
   </ItemGroup>
 
 </Project>
