@@ -122,6 +122,7 @@ namespace Losol.Identity
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapDefaultControllerRoute();
+                endpoints.MapRazorPages();
             });
 
             if (!bool.TrueString.Equals(Configuration["SkipDbInitialization"]))
