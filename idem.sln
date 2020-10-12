@@ -15,7 +15,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Losol.Identity.Services", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Losol.Identity.Model", "src\Losol.Identity.Model\Losol.Identity.Model.csproj", "{0A8CB466-3598-49D8-ADFD-A9F4FC546AD8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Losol.Identity.Services.Tests", "src\Losol.Identity.Services.Tests\Losol.Identity.Services.Tests.csproj", "{78641C23-3B23-4452-97C3-9046ED61C824}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Losol.Identity.Services.Tests", "tests\Losol.Identity.Services.Tests\Losol.Identity.Services.Tests.csproj", "{78641C23-3B23-4452-97C3-9046ED61C824}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "demo", "demo", "{54116EAD-C01C-4AC2-B3A0-7EB50BA07E82}"
 EndProject
