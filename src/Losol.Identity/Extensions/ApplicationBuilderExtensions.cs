@@ -1,23 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
+﻿using IdentityModel;
 using IdentityServer4.EntityFramework.DbContexts;
 using IdentityServer4.EntityFramework.Mappers;
 using Losol.Identity.Config;
 using Losol.Identity.Data;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using System.Linq;
-using System.Security.Claims;
-using IdentityModel;
 using Losol.Identity.Model;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Hosting.Internal;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Security.Claims;
 
 namespace Losol.Identity.Extensions
 {
@@ -36,8 +35,8 @@ namespace Losol.Identity.Extensions
         }
 
         public static void InitializeLocalization(
-            this IApplicationBuilder app, 
-            CultureInfo[] supportedCultures, 
+            this IApplicationBuilder app,
+            CultureInfo[] supportedCultures,
             CultureInfo defaultCulture,
             IWebHostEnvironment environment)
         {
@@ -131,6 +130,11 @@ namespace Losol.Identity.Extensions
                 foreach (var resource in InMemoryConfig.GetApis(seedDataConfig.GetSection("Apis")))
                 {
                     context.ApiResources.Add(resource.ToEntity());
+                }
+
+                foreach (var resource in InMemoryConfig.GetApiScopes(seedDataConfig.GetSection("Apis")))
+                {
+                    context.ApiScopes.Add(resource.ToEntity());
                 }
 
                 context.SaveChanges();

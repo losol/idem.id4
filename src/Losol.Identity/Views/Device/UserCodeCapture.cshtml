@@ -4,15 +4,24 @@
 
 @inject IViewLocalizer Localizer
 
-<div class="page-header">
-    <h1>
-        @Localizer["User Code"]
-    </h1>
-    <p>
-        @Localizer["Please enter the code displayed on your device"]
-    </p>
-    <form asp-action="UserCodeCapture" method="post">
-        <input for="userCode" name="userCode" />
-        <button class="btn btn-primary">@Localizer["Submit"]</button>
-    </form>
+<div class="page-device-code">
+    <div class="lead">
+        <h1>@Localizer["User Code"]</h1>
+        <p>@Localizer["Please enter the code displayed on your device"]</p>
+    </div>
+
+    <partial name="_ValidationSummary" />
+
+    <div class="row">
+        <div class="col-sm-6">
+            <form asp-action="UserCodeCapture">
+                <div class="form-group">
+                    <label for="userCode">@Localizer["User Code"]:</label>
+                    <input class="form-control" for="userCode" name="userCode" autofocus />
+                </div>
+
+                <button class="btn btn-primary" name="button">@Localizer["Submit"]</button>
+            </form>
+        </div>
+    </div>
 </div>

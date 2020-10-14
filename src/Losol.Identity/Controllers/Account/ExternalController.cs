@@ -26,30 +26,30 @@ namespace Losol.Identity.Controllers.Account
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IIdentityServerInteractionService _interaction;
         private readonly IClientStore _clientStore;
-        private readonly ILogger<ExternalController> _logger;
         private readonly IEventService _events;
+        private readonly ILogger<ExternalController> _logger;
 
         public ExternalController(
+            UserManager<ApplicationUser> userManager,
+            SignInManager<ApplicationUser> signInManager,
             IIdentityServerInteractionService interaction,
             IClientStore clientStore,
             IEventService events,
-            ILogger<ExternalController> logger,
-            UserManager<ApplicationUser> userManager,
-            SignInManager<ApplicationUser> signInManager)
+            ILogger<ExternalController> logger)
         {
-            _interaction = interaction;
-            _clientStore = clientStore;
-            _logger = logger;
             _userManager = userManager;
             _signInManager = signInManager;
+            _interaction = interaction;
+            _clientStore = clientStore;
             _events = events;
+            _logger = logger;
         }
 
         /// <summary>
         /// initiate roundtrip to external authentication provider
         /// </summary>
         [HttpGet]
-        public IActionResult Challenge(string provider, string returnUrl)
+        public IActionResult Challenge(string scheme, string returnUrl)
         {
             if (string.IsNullOrEmpty(returnUrl)) returnUrl = "~/";
 
@@ -67,11 +67,12 @@ namespace Losol.Identity.Controllers.Account
                 Items =
                 {
                     { "returnUrl", returnUrl },
-                    { "scheme", provider },
+                    { "scheme", scheme },
                 }
             };
 
-            return Challenge(props, provider);
+            return Challenge(props, scheme);
+
         }
 
         /// <summary>
@@ -97,7 +98,9 @@ namespace Losol.Identity.Controllers.Account
             var (user, provider, providerUserId, claims) = await FindUserFromExternalProviderAsync(result);
             if (user == null)
             {
-                // TODO: should we allow to auto-register?
+                // this might be where you might initiate a custom workflow for user registration
+                // in this sample we don't show how that would be done, as our sample implementation
+                // simply auto-provisions new external user
                 user = await AutoProvisionUserAsync(provider, providerUserId, claims);
             }
 
@@ -106,32 +109,40 @@ namespace Losol.Identity.Controllers.Account
             // this is typically used to store data needed for signout from those protocols.
             var additionalLocalClaims = new List<Claim>();
             var localSignInProps = new AuthenticationProperties();
-            ProcessLoginCallbackForOidc(result, additionalLocalClaims, localSignInProps);
+            ProcessLoginCallback(result, additionalLocalClaims, localSignInProps);
 
             // issue authentication cookie for user
-            // we must issue the cookie manually, and can't use the SignInManager because
+            // we must issue the cookie maually, and can't use the SignInManager because
             // it doesn't expose an API to issue additional claims from the login workflow
             var principal = await _signInManager.CreateUserPrincipalAsync(user);
             additionalLocalClaims.AddRange(principal.Claims);
             var name = principal.FindFirst(JwtClaimTypes.Name)?.Value ?? user.Id;
-            await _events.RaiseAsync(new UserLoginSuccessEvent(provider, providerUserId, user.Id, name));
-            await HttpContext.SignInAsync(user.Id, name, provider, localSignInProps, additionalLocalClaims.ToArray());
+
+            var isuser = new IdentityServerUser(user.Id)
+            {
+                DisplayName = name,
+                IdentityProvider = provider,
+                AdditionalClaims = additionalLocalClaims
+            };
+
+            await HttpContext.SignInAsync(isuser, localSignInProps);
 
             // delete temporary cookie used during external authentication
-            await HttpContext.SignOutAsync(IdentityServer4.IdentityServerConstants.ExternalCookieAuthenticationScheme);
+            await HttpContext.SignOutAsync(IdentityServerConstants.ExternalCookieAuthenticationScheme);
 
             // retrieve return URL
             var returnUrl = result.Properties.Items["returnUrl"] ?? "~/";
 
             // check if external login is in the context of an OIDC request
             var context = await _interaction.GetAuthorizationContextAsync(returnUrl);
-            await _events.RaiseAsync(new UserLoginSuccessEvent(provider, providerUserId, user.Id, user.UserName, true, context?.ClientId));
+            await _events.RaiseAsync(new UserLoginSuccessEvent(provider, providerUserId, user.Id, name, true, context?.Client.ClientId));
 
             if (context != null)
             {
-                if (await _clientStore.IsPkceClientAsync(context.ClientId))
+                if (context.IsNativeClient() || await _clientStore.IsPkceClientAsync(context.Client.ClientId))
                 {
-                    // if the client is PKCE then we assume it's native, so this change in how to
+                    // If the client is PKCE then we assume it's native.
+                    // The client is native, so this change in how to
                     // return the response is for better UX for the end user.
                     return this.LoadingPage("Redirect", returnUrl);
                 }
@@ -224,7 +235,9 @@ namespace Losol.Identity.Controllers.Account
             return user;
         }
 
-        private void ProcessLoginCallbackForOidc(AuthenticateResult externalResult, List<Claim> localClaims, AuthenticationProperties localSignInProps)
+        // if the external login is OIDC-based, there are certain things we need to preserve to make logout work
+        // this will be different for WS-Fed, SAML2p or other protocols
+        private void ProcessLoginCallback(AuthenticateResult externalResult, List<Claim> localClaims, AuthenticationProperties localSignInProps)
         {
             // if the external system sent a session id claim, copy it over
             // so we can use it for single sign-out
@@ -235,10 +248,10 @@ namespace Losol.Identity.Controllers.Account
             }
 
             // if the external provider issued an id_token, we'll keep it for signout
-            var id_token = externalResult.Properties.GetTokenValue("id_token");
-            if (id_token != null)
+            var idToken = externalResult.Properties.GetTokenValue("id_token");
+            if (idToken != null)
             {
-                localSignInProps.StoreTokens(new[] { new AuthenticationToken { Name = "id_token", Value = id_token } });
+                localSignInProps.StoreTokens(new[] { new AuthenticationToken { Name = "id_token", Value = idToken } });
             }
         }
     }

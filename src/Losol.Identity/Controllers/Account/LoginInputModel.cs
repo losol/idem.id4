@@ -1,4 +1,4 @@
-// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
+﻿// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
 // Modifications copyright (c) 2020 Losol AS
 
@@ -9,7 +9,7 @@ namespace Losol.Identity.Controllers.Account
     [LoginInput]
     public class LoginInputModel
     {
-        public string Email { get; set; }
+        public string Username { get; set; }
         public string Password { get; set; }
         [Phone]
         public string PhoneNumber { get; set; }
@@ -23,7 +23,7 @@ namespace Losol.Identity.Controllers.Account
             ValidationContext validationContext)
         {
             var model = (LoginInputModel)validationContext.ObjectInstance;
-            if ((string.IsNullOrEmpty(model.Email) || string.IsNullOrEmpty(model.Password)) &&
+            if ((string.IsNullOrEmpty(model.Username) || string.IsNullOrEmpty(model.Password)) &&
                 string.IsNullOrEmpty(model.PhoneNumber))
             {
                 return new ValidationResult("No login info provided");

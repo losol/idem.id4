@@ -1,5 +1,8 @@
+﻿// Copyright (c) Brock Allen & Dominick Baier. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
+// Modifications copyright (c) 2020 Losol AS
+
 using IdentityModel;
-using IdentityServer4;
 using IdentityServer4.Events;
 using IdentityServer4.Extensions;
 using IdentityServer4.Models;
@@ -7,29 +10,24 @@ using IdentityServer4.Services;
 using IdentityServer4.Stores;
 using Losol.Identity.Model;
 using Losol.Identity.Services.Auth;
-using Losol.Identity.Services.Util;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Localization;
 
 namespace Losol.Identity.Controllers.Account
 {
-    /// <summary>
-    /// This sample controller implements a typical login/logout/provision workflow for local and external accounts.
-    /// The login service encapsulates the interactions with the user data store. This data store is in-memory only and cannot be used for production!
-    /// The interaction service provides a way for the UI to communicate with identityserver for validation and context retrieval
-    /// </summary>
     [SecurityHeaders]
     [AllowAnonymous]
     public class AccountController : Controller
     {
-        private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IIdentityServerInteractionService _interaction;
         private readonly IClientStore _clientStore;
         private readonly IAuthenticationSchemeProvider _schemeProvider;
@@ -38,21 +36,21 @@ namespace Losol.Identity.Controllers.Account
         private readonly IStringLocalizer<AccountController> _stringLocalizer;
 
         public AccountController(
+            UserManager<ApplicationUser> userManager,
+            SignInManager<ApplicationUser> signInManager,
             IIdentityServerInteractionService interaction,
             IClientStore clientStore,
             IAuthenticationSchemeProvider schemeProvider,
             IEventService events,
-            SignInManager<ApplicationUser> signInManager,
-            UserManager<ApplicationUser> userManager,
             IPhoneAuthenticationService phoneAuthenticationService,
             IStringLocalizer<AccountController> stringLocalizer)
         {
+            _userManager = userManager;
+            _signInManager = signInManager;
             _interaction = interaction;
             _clientStore = clientStore;
             _schemeProvider = schemeProvider;
             _events = events;
-            _signInManager = signInManager;
-            _userManager = userManager;
             _phoneAuthenticationService = phoneAuthenticationService;
             _stringLocalizer = stringLocalizer;
         }
@@ -69,7 +67,7 @@ namespace Losol.Identity.Controllers.Account
             if (vm.IsExternalLoginOnly)
             {
                 // we only have one option for logging in and it's an external provider
-                return RedirectToAction("Challenge", "External", new { provider = vm.ExternalLoginScheme, returnUrl });
+                return RedirectToAction("Challenge", "External", new { scheme = vm.ExternalLoginScheme, returnUrl });
             }
 
             return View(vm);
@@ -84,26 +82,23 @@ namespace Losol.Identity.Controllers.Account
         {
             // check if we are in the context of an authorization request
             var returnUrl = model.ReturnUrl;
-            var context = await _interaction.GetAuthorizationContextAsync(returnUrl);
+            var context = await _interaction.GetAuthorizationContextAsync(model.ReturnUrl);
 
-            // the user clicked the "cancel" button
             switch (button)
             {
                 case "login":
                     if (ModelState.IsValid)
                     {
-                        if (!string.IsNullOrEmpty(model.Email) && !string.IsNullOrEmpty(model.Password))
+                        var result = await _signInManager.PasswordSignInAsync(model.Username, model.Password, model.RememberLogin, lockoutOnFailure: true);
+                        if (result.Succeeded)
                         {
-                            var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberLogin, lockoutOnFailure: true);
-                            if (result.Succeeded)
-                            {
-                                var user = await _userManager.FindByNameAsync(model.Email);
-                                await _events.RaiseAsync(new UserLoginSuccessEvent(user.UserName, user.Id, user.UserName, clientId: context?.ClientId));
-                                return await RedirectAsync(returnUrl);
-                            }
+                            var user = await _userManager.FindByNameAsync(model.Username);
+                            await _events.RaiseAsync(new UserLoginSuccessEvent(user.UserName, user.Id, user.UserName, clientId: context?.Client.ClientId));
+                            return await RedirectAsync(returnUrl);
                         }
-                        await _events.RaiseAsync(new UserLoginFailureEvent(model.Email, "invalid credentials", clientId: context?.ClientId));
-                        ModelState.AddModelError(string.Empty, _stringLocalizer[AccountOptions.InvalidCredentialsErrorMessage]);
+
+                        await _events.RaiseAsync(new UserLoginFailureEvent(model.Username, "invalid credentials", clientId: context?.Client.ClientId));
+                        ModelState.AddModelError(string.Empty, AccountOptions.InvalidCredentialsErrorMessage);
                     }
                     break;
 
@@ -122,12 +117,12 @@ namespace Losol.Identity.Controllers.Account
                                 TokenKey = key
                             });
                         }
-                        await _events.RaiseAsync(new UserLoginFailureEvent(model.Email, "invalid phone number", clientId: context?.ClientId));
+                        await _events.RaiseAsync(new UserLoginFailureEvent(model.Username, "invalid phone number", clientId: context?.Client.ClientId));
                         ModelState.AddModelError(string.Empty, _stringLocalizer[AccountOptions.InvalidPhoneNumber]);
                     }
                     break;
 
-                default:
+                default: // the user clicked the "cancel" button
                     return await CancelledAsync(returnUrl);
             }
 
@@ -251,33 +246,34 @@ namespace Losol.Identity.Controllers.Account
         private async Task<IActionResult> RedirectAsync(string returnUrl)
         {
             var context = await _interaction.GetAuthorizationContextAsync(returnUrl);
+
             if (context != null)
             {
-                if (await _clientStore.IsPkceClientAsync(context.ClientId))
+                if (context.IsNativeClient() || await _clientStore.IsPkceClientAsync(context.Client.ClientId))
                 {
-                    // if the client is PKCE then we assume it's native, so this change in how to
+                    // If the client is PKCE then we assume it's native.
+                    // The client is native, so this change in how to
                     // return the response is for better UX for the end user.
                     return this.LoadingPage("Redirect", returnUrl);
                 }
 
                 // we can trust model.ReturnUrl since GetAuthorizationContextAsync returned non-null
-                if (Url.IsLocalUrl(returnUrl))
-                {
-                    return Redirect(returnUrl);
-                }
-                else if (!string.IsNullOrEmpty(returnUrl))
-                {
-                    return Redirect(returnUrl);
-                }
-                else
-                {
-                    // user might have clicked on a malicious link - should be logged
-                    return Redirect("~/");
-                }
+                return Redirect(returnUrl);
             }
 
-            // since we don't have a valid context, then we just go back to the home page
-            return Redirect("~/");
+            // request for a local page
+            if (Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+
+            if (string.IsNullOrEmpty(returnUrl))
+            {
+                return Redirect("~/");
+            }
+
+            // user might have clicked on a malicious link - should be logged
+            throw new Exception("invalid return URL");
         }
 
         private async Task<IActionResult> CancelledAsync(string returnUrl)
@@ -288,26 +284,29 @@ namespace Losol.Identity.Controllers.Account
                 // if the user cancels, send a result back into IdentityServer as if they 
                 // denied the consent (even if this client does not require consent).
                 // this will send back an access denied OIDC error response to the client.
-                await _interaction.GrantConsentAsync(context, ConsentResponse.Denied);
+                await _interaction.DenyAuthorizationAsync(context, AuthorizationError.AccessDenied);
             }
 
             return await RedirectAsync(returnUrl);
         }
 
 
+        /*****************************************/
+        /* helper APIs for the AccountController */
+        /*****************************************/
         private async Task<LoginViewModel> BuildLoginViewModelAsync(string returnUrl)
         {
             var context = await _interaction.GetAuthorizationContextAsync(returnUrl);
             if (context?.IdP != null && await _schemeProvider.GetSchemeAsync(context.IdP) != null)
             {
-                var local = context.IdP == IdentityServerConstants.LocalIdentityProvider;
+                var local = context.IdP == IdentityServer4.IdentityServerConstants.LocalIdentityProvider;
 
                 // this is meant to short circuit the UI and only trigger the one external IdP
                 var vm = new LoginViewModel
                 {
                     EnableLocalLogin = local,
                     ReturnUrl = returnUrl,
-                    Email = context?.LoginHint,
+                    Username = context?.LoginHint,
                 };
 
                 if (!local)
@@ -328,61 +327,35 @@ namespace Losol.Identity.Controllers.Account
                     AuthenticationScheme = x.Name
                 }).ToList();
 
-
-            var model = new LoginViewModel
+            var allowLocal = true;
+            if (context?.Client.ClientId != null)
             {
-                AllowRememberLogin = AccountOptions.AllowRememberLogin,
-                EnableLocalLogin = AccountOptions.AllowLocalLogin,
-                EnablePasswordLogin = true,
-                EnablePhoneLogin = true,
-                ReturnUrl = returnUrl,
-                ExternalProviders = providers.ToArray()
-            };
-
-            if (context?.ClientId != null)
-            {
-                var client = await _clientStore.FindEnabledClientByIdAsync(context.ClientId);
+                var client = await _clientStore.FindEnabledClientByIdAsync(context.Client.ClientId);
                 if (client != null)
                 {
-                    model.EnableLocalLogin = client.EnableLocalLogin;
+                    allowLocal = client.EnableLocalLogin;
 
                     if (client.IdentityProviderRestrictions != null && client.IdentityProviderRestrictions.Any())
                     {
-                        model.ExternalProviders = providers.Where(provider => client.IdentityProviderRestrictions
-                            .Contains(provider.AuthenticationScheme)).ToArray();
+                        providers = providers.Where(provider => client.IdentityProviderRestrictions.Contains(provider.AuthenticationScheme)).ToList();
                     }
-
-                    var properties = client.Properties;
-
-                    model.EnablePasswordLogin = properties?.ContainsKey("EnablePasswordLogin") == true &&
-                                                bool.TrueString.Equals(properties["EnablePasswordLogin"]);
-
-                    model.EnablePhoneLogin = properties?.ContainsKey("EnablePhoneLogin") == true &&
-                                             bool.TrueString.Equals(properties["EnablePhoneLogin"]);
                 }
             }
 
-            var loginHint = context?.LoginHint;
-            if (!string.IsNullOrEmpty(loginHint))
+            return new LoginViewModel
             {
-                if (PhoneNumberUtil.IsPhoneNumber(loginHint))
-                {
-                    model.PhoneNumber = loginHint;
-                }
-                else
-                {
-                    model.Email = loginHint;
-                }
-            }
-
-            return model;
+                AllowRememberLogin = AccountOptions.AllowRememberLogin,
+                EnableLocalLogin = allowLocal && AccountOptions.AllowLocalLogin,
+                ReturnUrl = returnUrl,
+                Username = context?.LoginHint,
+                ExternalProviders = providers.ToArray()
+            };
         }
 
         private async Task<LoginViewModel> BuildLoginViewModelAsync(LoginInputModel model)
         {
             var vm = await BuildLoginViewModelAsync(model.ReturnUrl);
-            vm.Email = model.Email;
-            vm.PhoneNumber = model.PhoneNumber;
+            vm.Username = model.Username;
             vm.RememberLogin = model.RememberLogin;
             return vm;
         }

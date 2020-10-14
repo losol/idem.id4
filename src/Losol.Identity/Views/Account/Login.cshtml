@@ -5,8 +5,9 @@
 @inject IViewLocalizer Localizer
 
 <div class="login-page">
-    <div class="page-header">
+    <div class="lead">
         <h1>@Localizer["Login"]</h1>
+        <p>@Localizer["Choose how to login"]</p>
     </div>
 
     <partial name="_ValidationSummary" />
@@ -16,63 +17,57 @@
         @if (Model.EnableLocalLogin)
         {
             <div class="col-sm-6">
-                <div class="panel panel-default">
-                    <div class="panel-heading">
-                        <h3 class="panel-title">@Localizer["Local Login"]</h3>
+                <div class="card">
+                    <div class="card-header">
+                        <h2>@Localizer["Local Account"]</h2>
                     </div>
-                    <div class="panel-body">
 
+                    <div class="card-body">
                         <form asp-route="Login">
                             <input type="hidden" asp-for="ReturnUrl" />
 
-                            <fieldset>
+                            <div class="form-group">
+                                <label asp-for="Username"></label>
+                                <input class="form-control" placeholder="@Localizer["Username"]" asp-for="Username" autofocus>
+                            </div>
+                            <div class="form-group">
+                                <label asp-for="Password"></label>
+                                <input type="password" class="form-control" placeholder="@Localizer["Password"]" asp-for="Password" autocomplete="off">
+                            </div>
 
-                                @if (Model.EnablePasswordLogin)
+                            @if (Model.AllowRememberLogin)
+                            {
+                                <div class="form-group">
+                                    <div class="form-check">
+                                        <input class="form-check-input" asp-for="RememberLogin">
+                                        <label class="form-check-label" asp-for="RememberLogin">
+                                            @Localizer["Remember My Login"]
+                                        </label>
+                                    </div>
+                                </div>
+                            }
+
+                            <button class="btn btn-primary" name="button" value="login">@Localizer["Login"]</button>
+                            <button class="btn btn-secondary" name="button" value="cancel">@Localizer["Cancel"]</button>
+
+                            @if (Model.EnablePhoneLogin)
+                            {
+                                if (Model.EnablePasswordLogin)
                                 {
-                                    <div class="form-group">
-                                        <label asp-for="Email"></label>
-                                        <input class="form-control" placeholder="@Localizer["Username"]" asp-for="Email" autofocus>
-                                    </div>
-                                    <div class="form-group">
-                                        <label asp-for="Password"></label>
-                                        <input type="password" class="form-control" placeholder="@Localizer["Password"]" asp-for="Password" autocomplete="off">
-                                    </div>
-
-                                    @if (Model.AllowRememberLogin)
-                                    {
-                                        <div class="form-group login-remember">
-                                            <label asp-for="RememberLogin">
-                                                <input asp-for="RememberLogin">
-                                                <strong>@Localizer["Remember My Login"]</strong>
-                                            </label>
-                                        </div>
-                                    }
-
-                                    <div class="form-group">
-                                        <button class="btn btn-primary" name="button" value="login">@Localizer["Login"]</button>
-                                        <button class="btn btn-default" name="button" value="cancel">@Localizer["Cancel"]</button>
-                                    </div>
+                                    <div class="or">@Localizer["or"]</div>
                                 }
 
-                                @if (Model.EnablePhoneLogin)
-                                {
-                                    if (Model.EnablePasswordLogin)
-                                    {
-                                        <span class="or">@Localizer["or"]</span>
-                                    }
+                                <div class="form-group">
+                                    <label asp-for="PhoneNumber"><strong>@Localizer["Enter phone number"]</strong></label>
+                                    <input class="form-control" type="tel" placeholder="@Localizer["Enter phone number"]" asp-for="PhoneNumber" autofocus>
+                                </div>
 
-                                    <div class="form-group">
-                                        <label asp-for="PhoneNumber"><strong>@Localizer["Enter phone number"]</strong></label>
-                                        <input class="form-control" type="tel" placeholder="@Localizer["Enter phone number"]" asp-for="PhoneNumber" autofocus>
-                                    </div>
+                                <div class="form-group">
+                                    <button class="btn btn-primary" name="button" value="sendSMS">@Localizer["Send SMS"]</button>
+                                    <button class="btn btn-secondary" name="button" value="cancel">@Localizer["Cancel"]</button>
+                                </div>
+                            }
 
-                                    <div class="form-group">
-                                        <button class="btn btn-primary" name="button" value="sendSMS">@Localizer["Send SMS"]</button>
-                                        <button class="btn btn-default" name="button" value="cancel">@Localizer["Cancel"]</button>
-                                    </div>
-                                }
-
-                            </fieldset>
                         </form>
                     </div>
                 </div>
@@ -81,20 +76,20 @@
 
         @if (Model.VisibleExternalProviders.Any())
         {
-            <div class="col-md-6 col-sm-6 external-providers">
-                <div class="panel panel-default">
-                    <div class="panel-heading">
-                        <h3 class="panel-title">@Localizer["External Login"]</h3>
+            <div class="col-sm-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>@Localizer["External Account"]</h2>
                     </div>
-                    <div class="panel-body">
+                    <div class="card-body">
                         <ul class="list-inline">
                             @foreach (var provider in Model.VisibleExternalProviders)
                             {
-                                <li>
-                                    <a class="btn btn-default"
+                                <li class="list-inline-item">
+                                    <a class="btn btn-secondary"
                                        asp-controller="External"
                                        asp-action="Challenge"
-                                       asp-route-provider="@provider.AuthenticationScheme"
+                                       asp-route-scheme="@provider.AuthenticationScheme"
                                        asp-route-returnUrl="@Model.ReturnUrl">
                                         @provider.DisplayName
                                     </a>
@@ -110,7 +105,7 @@
         {
             <div class="alert alert-warning">
                 <strong>@Localizer["Invalid login request"]</strong>
-                @Localizer["There are no login schemes configured for this client."]
+                @Localizer["There are no login schemes configured for this request."]
             </div>
         }
     </div>

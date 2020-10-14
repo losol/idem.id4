@@ -3,7 +3,6 @@ using System;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Security.Policy;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Xunit.Sdk;
