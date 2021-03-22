@@ -28,7 +28,33 @@ namespace Losol.Identity.Tests
                 .ConfigureAppConfiguration(app => app
                     .AddInMemoryCollection(new Dictionary<string, string>
                     {
-                        { "SkipDbInitialization", bool.TrueString }
+                        { "IdentityServer:ConfigurationType", "InMemory" },
+                        { "SkipDbInitialization", bool.TrueString }, // don't run migrations on in-memory DB
+                        { "InMemoryConfiguration:Ids:0", "OpenId" },
+                        { "InMemoryConfiguration:Ids:1", "Profile" },
+                        { "InMemoryConfiguration:Ids:2", "Phone" },
+                        { "InMemoryConfiguration:Apis:0:Id", "demo.api" },
+                        { "InMemoryConfiguration:Apis:0:Name", "Demo API" },
+                        { "InMemoryConfiguration:Apis:0:UserClaims:0", "role" },
+                        { "InMemoryConfiguration:Apis:0:UserClaims:1", "phone_number" },
+                        { "InMemoryConfiguration:Clients:0:Id", "test" },
+                        { "InMemoryConfiguration:Clients:0:Name", "Integration Tests Client" },
+                        { "InMemoryConfiguration:Clients:0:Url", "http://integration-tests.local" },
+                        { "InMemoryConfiguration:Clients:0:UserClaims:0", "role" },
+                        { "InMemoryConfiguration:Clients:0:UserClaims:1", "phone_number" },
+                        { "InMemoryConfiguration:Clients:0:RedirectPaths:0", "/callback.html" },
+                        { "InMemoryConfiguration:Clients:0:PostLogoutRedirectPaths:0", "/index.html" },
+                        { "InMemoryConfiguration:Clients:0:AllowedScopes:0", "openid" },
+                        { "InMemoryConfiguration:Clients:0:AllowedScopes:1", "profile" },
+                        { "InMemoryConfiguration:Clients:0:AllowedScopes:2", "demo.api" },
+                        { "InMemoryConfiguration:Clients:0:AllowedGrantTypes:0", "authorization_code" },
+                        { "InMemoryConfiguration:Clients:0:AllowedCorsOrigins:0", "http://integration-tests.local" },
+                        { "InMemoryConfiguration:Clients:0:RequirePkce", bool.TrueString },
+                        { "InMemoryConfiguration:Clients:0:RequireConsent", bool.FalseString },
+                        { "InMemoryConfiguration:Clients:0:RequireClientSecret", bool.FalseString },
+                        { "InMemoryConfiguration:Clients:0:AllowAccessTokensViaBrowser", bool.TrueString },
+                        { "InMemoryConfiguration:Clients:0:Properties:EnablePasswordLogin", bool.TrueString },
+                        { "InMemoryConfiguration:Clients:0:Properties:EnablePhoneLogin", bool.TrueString }
                     }))
                 .ConfigureServices(services =>
                 {

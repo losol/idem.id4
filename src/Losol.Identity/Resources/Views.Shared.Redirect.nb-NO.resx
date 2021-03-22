@@ -121,8 +121,8 @@
     <value>Du blir nå returnert til applikasjonen.</value>
     <comment>You are now being returned to the application.</comment>
   </data>
-  <data name="Once complete, you may close this tab" xml:space="preserve">
-    <value>Når du er fullført, kan du lukke denne fanen</value>
-    <comment>Once complete, you may close this tab</comment>
+  <data name="Once complete, you may close this tab." xml:space="preserve">
+    <value>Når du er fullført, kan du lukke denne fanen.</value>
+    <comment>Once complete, you may close this tab.</comment>
   </data>
 </root>

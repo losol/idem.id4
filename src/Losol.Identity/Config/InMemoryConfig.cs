@@ -41,6 +41,14 @@ namespace Losol.Identity.Config
                 .ToArray();
         }
 
+        public static IEnumerable<ApiScope> GetApiScopes(IConfigurationSection configuration)
+        {
+            return configuration
+                .GetChildren()
+                .Select(s => new ApiScope(s["Id"], s["Name"]))
+                .ToArray();
+        }
+
         public static IEnumerable<Client> GetClients(IConfigurationSection configuration)
         {
             return configuration

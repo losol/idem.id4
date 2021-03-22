@@ -17,6 +17,7 @@ namespace Losol.Identity.Extensions
             return builder
                 .AddInMemoryIdentityResources(InMemoryConfig.GetIds(config.GetSection("Ids")))
                 .AddInMemoryApiResources(InMemoryConfig.GetApis(config.GetSection("Apis")))
+                .AddInMemoryApiScopes(InMemoryConfig.GetApiScopes(config.GetSection("Apis")))
                 .AddInMemoryClients(InMemoryConfig.GetClients(config.GetSection("Clients")));
         }
 
